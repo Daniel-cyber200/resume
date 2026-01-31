@@ -196,47 +196,56 @@ export default function Home() {
 
   // ==================== LOAD DATA EFFECT ====================
 useEffect(() => {
-  // For development: Always start fresh
-  localStorage.removeItem('resume-pro-data');
-  
-  // Start with truly empty resume
-  setResumeData({
-    personal: {
-      name: '',
-      email: '',
-      phone: '',
-      location: '',
-      linkedin: '',
-      portfolio: '',
-      website: '',
-      github: '',
-      summary: ''
-    },
-    workExperience: [],
-    education: [],
-    skills: [
-      { category: 'technical', items: [] },
-      { category: 'soft', items: [] },
-      { category: 'tools', items: [] },
-      { category: 'languages', items: [] }
-    ],
-    customizations: {
-      template: 'modern',
-      theme: 'blue',
-      font: 'inter',
-      spacing: 'comfortable'
-    }
-  });
-  
-  setIsLoading(false);
-  
-  // Optional: Add a welcome message
-  const timer = setTimeout(() => {
-    addToast('Welcome to ResumeCraft Pro! Start building your resume.', 'info');
-  }, 1000);
-  
-  return () => clearTimeout(timer);
-}, []);
+    // Add a small delay to show loading screen
+    const timer = setTimeout(() => {
+      const saved = localStorage.getItem('resume-pro-data');
+      
+      if (saved) {
+        try {
+          const parsedData = JSON.parse(saved);
+          
+          // Check if this is actually valid data (not empty or default)
+          const hasValidData = parsedData?.personal?.name || 
+                              (Array.isArray(parsedData?.workExperience) && parsedData.workExperience.length > 0) ||
+                              (Array.isArray(parsedData?.education) && parsedData.education.length > 0) ||
+                              (Array.isArray(parsedData?.skills) && parsedData.skills.some((cat: any) => cat.items?.length > 0));
+          
+          if (hasValidData) {
+            setResumeData(parsedData);
+            addToast('Your saved resume loaded!', 'success');
+          }
+        } catch (e) {
+          console.error('Error loading saved data');
+        }
+      }
+      setIsLoading(false);
+    }, 800); // Small delay for better UX
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // ==================== AUTO-SAVE EFFECT ====================
+  useEffect(() => {
+    if (isLoading) return;
+    
+    const saveTimeout = setTimeout(() => {
+      const hasData = resumeData.personal.name || 
+                     resumeData.workExperience.length > 0 ||
+                     resumeData.education.length > 0 ||
+                     resumeData.skills.some(cat => cat.items.length > 0);
+      
+      if (hasData) {
+        setIsSaving(true);
+        localStorage.setItem('resume-pro-data', JSON.stringify(resumeData));
+        
+        setTimeout(() => {
+          setIsSaving(false);
+        }, 300);
+      }
+    }, 2000);
+    
+    return () => clearTimeout(saveTimeout);
+  }, [resumeData, isLoading]);
 
   // ==================== UPDATE FUNCTIONS ====================
   const updatePersonal = (field: keyof ResumeData['personal'], value: string) => {
